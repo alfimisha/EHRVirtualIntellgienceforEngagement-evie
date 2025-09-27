@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import requests
 
-BASE_URL = "http://127.0.0.1:5000"  # Flask server address
+BASE_URL = "http://127.0.0.1:8001"  # Flask server address
 
 class PatientAlertsGUI:
     def __init__(self, root):

@@ -1,5 +1,13 @@
 [
   {
+    "patient_id": "184668ad-08d8-2c05-cb16-c7040f00b848",
+    "name": "Patient-184668ad-08d8-2c05-cb16-c7040f00b848",
+    "score": 85,
+    "priority": "high",
+    "rationale": "High fever with a sore throat that's been constant for some time indicates a concerning infection. Belinda has someone available to care for her at home, which reduces the emergency index but still warrants high priority.",
+    "timestamp": "2025-09-27 16:17:13"
+  },
+  {
     "patient_id": "2f20854f-e037-87c8-aabf-10ef6d3b58fe",
     "name": "Patient-2f20854f-e037-87c8-aabf-10ef6d3b58fe",
     "score": 75,
