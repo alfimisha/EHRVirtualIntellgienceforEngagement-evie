@@ -26,6 +26,26 @@ def shutil_which(cmd):
     from shutil import which
     return which(cmd) is not None
 
+# ---- Critical alert helper ----
+def send_critical_alert(patient_id, score, priority, rationale):
+    """Send critical patient info to the laptop Flask backend."""
+    try:
+        LAPTOP_SERVER_URL = "http://192.168.56.1:5000/alert"  # Replace with your laptop's IP
+        payload = {
+            "patient_id": patient_id,
+            "name": f"Patient-{patient_id}",
+            "score": score,
+            "priority": priority,
+            "rationale": rationale
+        }
+        r = requests.post(LAPTOP_SERVER_URL, json=payload, timeout=10)
+        if r.ok:
+            print(f"[ALERT SENT] Patient {patient_id} flagged as critical.")
+        else:
+            print(f"[ALERT FAILED] Status: {r.status_code}")
+    except Exception as e:
+        print(f"[ALERT ERROR] Could not send alert: {e}")
+
 # ---- Vosk STT ----
 vosk_model = Model(CONFIG["vosk_model"])
 
@@ -124,6 +144,11 @@ while True:
                 rationale = resp.get("rationale", "")
                 print("Triage result:", resp)
                 say(f"Your triage score is {score}. Priority {priority}.")
+
+                # ---- Send critical alert if score > 60 ----
+                if score > 60:
+                    send_critical_alert(pid, score, priority, rationale)
+
                 break
 
             else:
