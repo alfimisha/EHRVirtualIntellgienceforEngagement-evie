@@ -50,6 +50,8 @@ void driveRight(int speed) {
   analogWrite(PWMB, constrain(speed, 0, 255));
 }
 
+// Although a bunch of directions are implemented in this file
+// the only direction edison would send back is forward cuz that's all the ultrasonic sensor can detect
 void moveRobot(String dir, int duration, int speed = 200) {
   // Validate direction
   if (!(dir == "forward" || dir == "backward" || dir == "left" || 
