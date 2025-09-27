@@ -1,0 +1,10 @@
+[
+  {
+    "patient_id": "2f20854f-e037-87c8-aabf-10ef6d3b58fe",
+    "name": "Patient-2f20854f-e037-87c8-aabf-10ef6d3b58fe",
+    "score": 75,
+    "priority": "high",
+    "rationale": "Patient's symptoms of pain, congestion, and difficulty breathing worsened rapidly since waking up, with a constriction feeling in the chest that is likely related to asthma. The presence of wheezing, coughing, and tightness suggests a high level of distress. Given the severity of these symptoms and their rapid escalation, this patient requires immediate attention.",
+    "timestamp": "2025-09-27 14:26:33"
+  }
+]

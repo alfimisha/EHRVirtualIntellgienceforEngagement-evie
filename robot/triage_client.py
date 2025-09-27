@@ -2,7 +2,7 @@
 import cv2, time, json, requests, subprocess, platform
 from vosk import Model, KaldiRecognizer
 import pandas as pd
-from ehr_parser import get_patient_context, get_full_name  # or get_patient_context if you prefer
+from ehr_parser import get_patient_context, get_full_name
 
 CONFIG = {
     "server_url": "http://127.0.0.1:8000/triage",   # Flask server + Ollama
@@ -18,7 +18,8 @@ else:
     TTS_CMD = "espeak"
 
 def say(text):
-    if not text: return
+    if not text:
+        return
     try:
         subprocess.run([TTS_CMD, text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception:
@@ -32,7 +33,7 @@ def shutil_which(cmd):
 def send_critical_alert(patient_id, score, priority, rationale):
     """Send critical patient info to the laptop Flask backend."""
     try:
-        LAPTOP_SERVER_URL = "http://192.168.56.1:5000/alert"  # Replace with your laptop's IP
+        LAPTOP_SERVER_URL = "http://127.0.0.1:8001/alert"
         payload = {
             "patient_id": patient_id,
             "name": f"Patient-{patient_id}",
@@ -91,6 +92,7 @@ patient_index = 0
 
 say("Triage system ready. Waiting for a patient.")
 cooldown_until = 0
+face_cleared = True   # New flag to ensure old face disappears first
 
 while True:
     ok, frame = cap.read()
@@ -100,10 +102,12 @@ while True:
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = cascade.detectMultiScale(gray, 1.2, 5, minSize=(60,60))
 
+    # Draw faces
     for (x,y,w,h) in faces:
         cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
 
     now = time.time()
+
     if now < cooldown_until:
         cv2.putText(frame, "Moving to next patient...", (30,30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255), 2)
@@ -116,8 +120,14 @@ while True:
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-    # Engage if a face detected
-    if len(faces) > 0:
+    # Reset cleared flag once no faces are present
+    if len(faces) == 0:
+        face_cleared = True
+
+    # Only engage if a new face is present after cleared
+    if len(faces) > 0 and face_cleared:
+        face_cleared = False  # lock until faces disappear again
+
         if patient_index < len(patients_df):
             pid = str(patients_df.iloc[patient_index]["Id"])
             ehr_dict = get_patient_context(pid)
@@ -153,7 +163,6 @@ while True:
                 # ---- Send critical alert if score > 60 ----
                 if score > 60:
                     send_critical_alert(pid, score, priority, rationale)
-
                 break
             else:
                 print("Unexpected response:", resp)
