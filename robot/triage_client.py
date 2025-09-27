@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import cv2, time, json, requests, subprocess, platform
+import cv2, time, json, requests, subprocess, platform, serial
 from vosk import Model, KaldiRecognizer
 import pandas as pd
 from ehr_parser import get_patient_context, get_full_name
@@ -9,7 +9,26 @@ CONFIG = {
     "vosk_model": "./vosk-model-small-en-us-0.15",
     "camera_index": 0,
     "haar_cascade": "{cv2_haar}/haarcascade_frontalface_default.xml",
+    "esp32_port": "/dev/cu.usbserial-1130",   # 🔥 replace with your ESP32 device port
+    "esp32_baud": 115200
 }
+
+# ---- Serial to ESP32 ----
+try:
+    ser = serial.Serial(CONFIG["esp32_port"], CONFIG["esp32_baud"], timeout=1)
+    print("[ESP32] Connected on", CONFIG["esp32_port"])
+except Exception as e:
+    ser = None
+    print("[ESP32] Serial not available:", e)
+
+def send_gpio(cmd):
+    """Send HIGH/LOW to ESP32 over serial."""
+    if ser:
+        try:
+            ser.write((cmd + "\n").encode())
+            print(f"[ESP32] Sent: {cmd}")
+        except Exception as e:
+            print("[ESP32] Send failed:", e)
 
 # ---- auto TTS ----
 if platform.system() == "Darwin":
@@ -28,26 +47,6 @@ def say(text):
 def shutil_which(cmd):
     from shutil import which
     return which(cmd) is not None
-
-# ---- Critical alert helper ----
-def send_critical_alert(patient_id, score, priority, rationale):
-    """Send critical patient info to the laptop Flask backend."""
-    try:
-        LAPTOP_SERVER_URL = "http://127.0.0.1:8001/alert"
-        payload = {
-            "patient_id": patient_id,
-            "name": f"Patient-{patient_id}",
-            "score": score,
-            "priority": priority,
-            "rationale": rationale
-        }
-        r = requests.post(LAPTOP_SERVER_URL, json=payload, timeout=10)
-        if r.ok:
-            print(f"[ALERT SENT] Patient {patient_id} flagged as critical.")
-        else:
-            print(f"[ALERT FAILED] Status: {r.status_code}")
-    except Exception as e:
-        print(f"[ALERT ERROR] Could not send alert: {e}")
 
 # ---- Vosk STT ----
 vosk_model = Model(CONFIG["vosk_model"])
@@ -71,7 +70,8 @@ def ask(prompt, seconds=4):
     text = ""
     while True:
         data = proc.stdout.read(4000)
-        if not data: break
+        if not data:
+            break
         if rec.AcceptWaveform(data):
             part = json.loads(rec.Result()).get("text", "")
             text += " " + part
@@ -92,7 +92,7 @@ patient_index = 0
 
 say("Triage system ready. Waiting for a patient.")
 cooldown_until = 0
-face_cleared = True   # New flag to ensure old face disappears first
+face_cleared = True   # Ensures old face disappears first
 
 while True:
     ok, frame = cap.read()
@@ -120,13 +120,12 @@ while True:
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-    # Reset cleared flag once no faces are present
     if len(faces) == 0:
         face_cleared = True
 
-    # Only engage if a new face is present after cleared
     if len(faces) > 0 and face_cleared:
-        face_cleared = False  # lock until faces disappear again
+        face_cleared = False
+        send_gpio("HIGH")   # 🔥 Face detected → GPIO22 HIGH
 
         if patient_index < len(patients_df):
             pid = str(patients_df.iloc[patient_index]["Id"])
@@ -159,10 +158,6 @@ while True:
                 rationale = resp.get("rationale", "")
                 print("Triage result:", resp)
                 say(f"Your triage score is {score}. Priority {priority}.")
-
-                # ---- Send critical alert if score > 60 ----
-                if score > 60:
-                    send_critical_alert(pid, score, priority, rationale)
                 break
             else:
                 print("Unexpected response:", resp)
@@ -170,3 +165,4 @@ while True:
 
         say("Thank you. I will continue rounds now.")
         cooldown_until = time.time() + 10
+        send_gpio("LOW")    # 🔥 After session → GPIO22 LOW
