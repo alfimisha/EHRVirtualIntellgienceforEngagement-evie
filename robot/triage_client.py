@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import cv2, time, json, requests, subprocess, platform, serial
+import serial.tools.list_ports
 from vosk import Model, KaldiRecognizer
 import pandas as pd
 from ehr_parser import get_patient_context, get_full_name
@@ -9,14 +10,29 @@ CONFIG = {
     "vosk_model": "./vosk-model-small-en-us-0.15",
     "camera_index": 0,
     "haar_cascade": "{cv2_haar}/haarcascade_frontalface_default.xml",
-    "esp32_port": "/dev/cu.usbserial-1130",   # 🔥 replace with your ESP32 device port
     "esp32_baud": 115200
 }
 
+# ---- Auto-detect and connect to ESP32 ----
+def find_esp32_port():
+    """Auto-detect ESP32 port"""
+    ports = serial.tools.list_ports.comports()
+    for port, desc, hwid in sorted(ports):
+        if "usbserial" in port.lower() or "SLAB_USBtoUART" in port or "ttyUSB" in port or "ttyACM" in port:
+            print(f"[ESP32] Found potential port: {port} ({desc})")
+            return port
+    return None
+
 # ---- Serial to ESP32 ----
 try:
-    ser = serial.Serial(CONFIG["esp32_port"], CONFIG["esp32_baud"], timeout=1)
-    print("[ESP32] Connected on", CONFIG["esp32_port"])
+    esp32_port = find_esp32_port()
+    if esp32_port:
+        ser = serial.Serial(esp32_port, CONFIG["esp32_baud"], timeout=1)
+        time.sleep(2)  # Wait for connection
+        print("[ESP32] Connected on", esp32_port)
+    else:
+        ser = None
+        print("[ESP32] No ESP32 port found")
 except Exception as e:
     ser = None
     print("[ESP32] Serial not available:", e)
@@ -26,6 +42,10 @@ def send_gpio(cmd):
     if ser:
         try:
             ser.write((cmd + "\n").encode())
+            time.sleep(1)  # Wait for response
+            if ser.in_waiting:
+                response = ser.readline().decode().strip()
+                print(f"[ESP32] Response: {response}")
             print(f"[ESP32] Sent: {cmd}")
         except Exception as e:
             print("[ESP32] Send failed:", e)
@@ -81,7 +101,7 @@ def ask(prompt, seconds=4):
     print("A:", ans)
     return ans
 
-# ---- Face detection ----
+# ---- Face detection ---- (YOUR ORIGINAL OPENCV LOGIC - UNCHANGED)
 haar = CONFIG["haar_cascade"].replace("{cv2_haar}", cv2.data.haarcascades)
 cap = cv2.VideoCapture(CONFIG["camera_index"])
 cascade = cv2.CascadeClassifier(haar)
