@@ -30,6 +30,14 @@ try:
         ser = serial.Serial(esp32_port, CONFIG["esp32_baud"], timeout=1)
         time.sleep(2)  # Wait for connection
         print("[ESP32] Connected on", esp32_port)
+        
+        # Initialize GPIO to LOW on startup
+        ser.write(b"LOW\n")
+        time.sleep(0.5)
+        if ser.in_waiting:
+            response = ser.readline().decode().strip()
+            print(f"[ESP32] Startup initialization: {response}")
+        print("[ESP32] GPIO initialized to LOW")
     else:
         ser = None
         print("[ESP32] No ESP32 port found")
@@ -140,25 +148,28 @@ while True:
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
+    # Reset cleared flag once no faces are present
     if len(faces) == 0:
         face_cleared = True
 
-    if len(faces) > 0 and face_cleared:
+    # Only start triage if a *new* face appears and cooldown expired
+    if len(faces) > 0 and face_cleared and now >= cooldown_until:
         face_cleared = False
-        send_gpio("HIGH")   # 🔥 Face detected → GPIO22 HIGH
+        send_gpio("HIGH")   # 🔥 Face detected → GPIO HIGH
 
         if patient_index < len(patients_df):
             pid = str(patients_df.iloc[patient_index]["Id"])
             ehr_dict = get_patient_context(pid)
+            name = get_full_name(patients_df.iloc[patient_index])
             patient_index += 1
         else:
             pid = f"anon-{int(time.time())}"
             ehr_dict = {"note": "No more patients in dataset"}
+            name = "Anonymous"
 
-        name = get_full_name(patients_df.iloc[patient_index - 1])
         say(f"Hello {name}. I will use your record for this session.")
 
-        # Conversation loop with server
+        # ---- Conversation loop with server ----
         answer = ""
         while True:
             try:
@@ -183,6 +194,8 @@ while True:
                 print("Unexpected response:", resp)
                 break
 
+        # ---- End of session ----
         say("Thank you. I will continue rounds now.")
         cooldown_until = time.time() + 10
-        send_gpio("LOW")    # 🔥 After session → GPIO22 LOW
+        send_gpio("LOW")    # 🔥 After session → GPIO LOW
+        face_cleared = False   # Must clear before another patient triggers
