@@ -13,7 +13,7 @@ CONFIG = {
     "esp32_baud": 115200
 }
 
-# ---- Auto-detect and connect to ESP32 ----
+# connect to mcu
 def find_esp32_port():
     """Auto-detect ESP32 port"""
     ports = serial.tools.list_ports.comports()
@@ -23,15 +23,14 @@ def find_esp32_port():
             return port
     return None
 
-# ---- Serial to ESP32 ----
+# serial protocol
 try:
     esp32_port = find_esp32_port()
     if esp32_port:
         ser = serial.Serial(esp32_port, CONFIG["esp32_baud"], timeout=1)
-        time.sleep(2)  # Wait for connection
+        time.sleep(2)  
         print("[ESP32] Connected on", esp32_port)
         
-        # Initialize GPIO to LOW on startup
         ser.write(b"LOW\n")
         time.sleep(0.5)
         if ser.in_waiting:
@@ -50,7 +49,7 @@ def send_gpio(cmd):
     if ser:
         try:
             ser.write((cmd + "\n").encode())
-            time.sleep(1)  # Wait for response
+            time.sleep(1)  
             if ser.in_waiting:
                 response = ser.readline().decode().strip()
                 print(f"[ESP32] Response: {response}")
@@ -58,7 +57,7 @@ def send_gpio(cmd):
         except Exception as e:
             print("[ESP32] Send failed:", e)
 
-# ---- auto TTS ----
+
 if platform.system() == "Darwin":
     TTS_CMD = "say"
 else:
@@ -76,7 +75,7 @@ def shutil_which(cmd):
     from shutil import which
     return which(cmd) is not None
 
-# ---- Vosk STT ----
+
 vosk_model = Model(CONFIG["vosk_model"])
 
 def ask(prompt, seconds=4):
@@ -109,7 +108,7 @@ def ask(prompt, seconds=4):
     print("A:", ans)
     return ans
 
-# ---- Face detection ---- (YOUR ORIGINAL OPENCV LOGIC - UNCHANGED)
+# face detection
 haar = CONFIG["haar_cascade"].replace("{cv2_haar}", cv2.data.haarcascades)
 cap = cv2.VideoCapture(CONFIG["camera_index"])
 cascade = cv2.CascadeClassifier(haar)
@@ -120,7 +119,7 @@ patient_index = 0
 
 say("Triage system ready. Waiting for a patient.")
 cooldown_until = 0
-face_cleared = True   # Ensures old face disappears first
+face_cleared = True   
 
 while True:
     ok, frame = cap.read()
@@ -130,7 +129,6 @@ while True:
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = cascade.detectMultiScale(gray, 1.2, 5, minSize=(60,60))
 
-    # Draw faces
     for (x,y,w,h) in faces:
         cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
 
@@ -148,14 +146,13 @@ while True:
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-    # Reset cleared flag once no faces are present
     if len(faces) == 0:
         face_cleared = True
 
     # Only start triage if a *new* face appears and cooldown expired
     if len(faces) > 0 and face_cleared and now >= cooldown_until:
         face_cleared = False
-        send_gpio("HIGH")   # 🔥 Face detected → GPIO HIGH
+        send_gpio("HIGH")   
 
         if patient_index < len(patients_df):
             pid = str(patients_df.iloc[patient_index]["Id"])
@@ -169,7 +166,6 @@ while True:
 
         say(f"Hello {name}. I will use your record for this session.")
 
-        # ---- Conversation loop with server ----
         answer = ""
         while True:
             try:
@@ -186,7 +182,7 @@ while True:
             elif "emergency_index" in resp:
                 score = int(resp.get("emergency_index", 0))
 
-                # Apply threshold rule
+                # Apply threshold
                 if score > 65:
                     priority = "critical"
                 else:
@@ -196,7 +192,7 @@ while True:
                 print("Triage result:", resp)
                 say(f"Your triage score is {score}. Priority {priority}.")
 
-                # Push ALL results into priority queue (8001)
+
                 alert_payload = {
                     "patient_id": pid,
                     "name": name,
@@ -215,8 +211,7 @@ while True:
                 print("Unexpected response:", resp)
                 break
 
-        # ---- End of session ----
         say("Thank you. I will continue rounds now.")
         cooldown_until = time.time() + 10
-        send_gpio("LOW")    # 🔥 After session → GPIO LOW
+        send_gpio("LOW")    
         face_cleared = False   # Must clear before another patient triggers

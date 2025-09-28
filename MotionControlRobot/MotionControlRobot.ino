@@ -14,7 +14,7 @@ void setup() {
 void loop() {
   if (!digitalRead(faceRec)) {
     digitalWrite(motor1GatePin, LOW);  // Gate = 0V -> PMOS ON
-    digitalWrite(motor2GatePin, LOW);  // Gate = 0V -> PMOS ON
+    digitalWrite(motor2GatePin, LOW);
     
   } else {
     digitalWrite(motor1GatePin, HIGH); // Gate = +5V -> PMOS OFF

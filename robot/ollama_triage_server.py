@@ -8,7 +8,7 @@ OLLAMA_MODEL = "llama3.2"
 # Store conversation history per patient
 sessions = {}
 
-# ---- Helper to run Ollama ----
+# Helper to run Ollama!
 def call_ollama(prompt):
     try:
         result = subprocess.run(
@@ -22,7 +22,7 @@ def call_ollama(prompt):
     except Exception as e:
         return f"ERROR: {e}"
 
-# ---- Helper to extract JSON safely ----
+# json extraction
 def extract_json(text: str):
     """Return first valid JSON object found in text, or None."""
     match = re.search(r"\{.*\}", text, re.DOTALL)
@@ -51,7 +51,7 @@ def triage():
     if answer:
         sessions[patient_id]["history"].append({"patient": answer})
 
-    # Build conversation history string
+
     convo = sessions[patient_id]["history"]
     convo_str = "\n".join(
         [f"Patient: {h['patient']}" if "patient" in h else f"Assistant: {h['assistant']}"
@@ -88,14 +88,13 @@ Now either:
 
     reply = call_ollama(prompt).strip()
 
-    # ---- 1) Stop at first valid JSON ----
+    # stop at first valid JSON
     result = extract_json(reply)
     if result:
         del sessions[patient_id]   # End session immediately
         return jsonify(result)
 
-    # ---- 2) Enforce hard cap of 5 questions ----
-        # ---- 2) Enforce hard cap of 5 questions ----
+        # cap of 5 qs
     history = sessions[patient_id]["history"]
     assistant_turns = sum(1 for h in history if "assistant" in h)
     if assistant_turns >= 5:

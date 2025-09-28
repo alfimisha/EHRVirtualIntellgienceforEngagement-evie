@@ -1,12 +1,12 @@
 import pandas as pd
 
 
-# Load Synthea CSVs
+# load Synthea CSVs
 patients_df = pd.read_csv("patients.csv")
 observations_df = pd.read_csv("observations.csv")
 conditions_df = pd.read_csv("conditions.csv")
 
-# Preprocess demographics
+# demographic info!
 patients_df['BIRTHDATE'] = pd.to_datetime(patients_df['BIRTHDATE'])
 today = pd.to_datetime("today")
 patients_df['age'] = (today - patients_df['BIRTHDATE']).dt.days // 365
@@ -17,12 +17,10 @@ def get_full_name(patient_row):
     last = patient_row.get('LAST', '')
     return f"{first} {last}".strip() or "Unknown"
 
-# Function to get patient context
 def get_patient_context(patient_id):
     # Make sure that patient_id is a string 
     patient_id = str(patient_id)
     
-    # Demographics
     patient = patients_df.loc[patients_df["Id"] == patient_id]
     if patient.empty:
         return f"No patient found with ID {patient_id}"
@@ -34,7 +32,7 @@ def get_patient_context(patient_id):
     race = patient.get("RACE", "Unknown")
     ethnicity = patient.get("ETHNICITY", "Unknown")
     
-    # Vitals/Observations in the last 3 years
+    # Filter by year!!
     patient_obs = observations_df[observations_df["PATIENT"] == patient_id].copy()
     patient_obs['DATE'] = pd.to_datetime(patient_obs['DATE']).dt.tz_localize(None)
     
@@ -61,7 +59,6 @@ def get_patient_context(patient_id):
     else:
         vitals_summary = "No relevant vitals recorded in the past 3 years"
     
-    # Conditions
     patient_conditions = conditions_df[conditions_df["PATIENT"] == patient_id]
     conditions_summary = ", ".join(patient_conditions["DESCRIPTION"].unique()) \
         if not patient_conditions.empty else "No conditions recorded"
@@ -77,7 +74,7 @@ Conditions: {conditions_summary}
 """
     return summary.strip()
 
-# Sample patient usage
+# Sample patient
 if __name__ == "__main__":
     # Patient ID from dataset
     example_patient_id = '184668ad-08d8-2c05-cb16-c7040f00b848'
