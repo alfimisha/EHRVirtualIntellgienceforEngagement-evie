@@ -185,10 +185,31 @@ while True:
                 continue
             elif "emergency_index" in resp:
                 score = int(resp.get("emergency_index", 0))
-                priority = resp.get("priority_label", "low")
+
+                # Apply threshold rule
+                if score > 65:
+                    priority = "critical"
+                else:
+                    priority = resp.get("priority_label", "low")
+
                 rationale = resp.get("rationale", "")
                 print("Triage result:", resp)
                 say(f"Your triage score is {score}. Priority {priority}.")
+
+                # Push ALL results into priority queue (8001)
+                alert_payload = {
+                    "patient_id": pid,
+                    "name": name,
+                    "score": score,
+                    "priority": priority,
+                    "rationale": rationale,
+                }
+                try:
+                    r = requests.post("http://127.0.0.1:8001/alert", json=alert_payload, timeout=5)
+                    print("[QUEUE] Alert pushed:", r.json())
+                except Exception as e:
+                    print("[QUEUE] Failed to push alert:", e)
+
                 break
             else:
                 print("Unexpected response:", resp)
