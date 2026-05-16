@@ -24,7 +24,8 @@ As of early 2022, only ~2% of nursing homes said they were fully staffed. (JAMA 
 What It Does
 EVIE addresses the challenge of understaffed nursing homes and hospitals by automating patient rounds and enhancing communication between patients and caregivers.
 
-Autonomous Rounds & Patient Interaction
+**Autonomous Rounds & Patient Interaction**
+
 Navigates through patient areas, stopping safely when near people using facial recognition
 Takes in patient EHR records, engages patients about previous issues, records responses via voice detection, and categorizes severity of concerns
 AI-Powered Triage & Priority Queue
@@ -35,7 +36,8 @@ Live Priority Queue: Risk scores automatically feed into a constantly updated pa
 Proactive Alerts: Staff are notified immediately if a patient’s condition escalates, enabling early intervention
 Impact: Together, these features enable care teams to monitor more patients more often, catch health issues earlier, and prioritize interventions with unprecedented precision—turning fragmented data into actionable intelligence.
 
-How We Built It
+**How We Built It**
+
 We integrated robotics hardware with AI and healthcare data systems.
 
 Navigation & Sensors
@@ -55,7 +57,8 @@ Priority Queue of Criticality: Maintains a live, ranked patient list updated in 
 Dashboard Visualization: Tkinter-based dashboard displaying the queue with continuous updates for staff
 This architecture reflects end-to-end LLM engineering: orchestrating multi-modal inputs, chaining AI agents with contextual awareness, and unifying outputs into a real-time clinical triage assistant.
 
-Design
+**Design**
+
 Robot chassis: modified open-source CAD designs (SolidWorks + 3D printing)
 Shelves and motor holders for component storage, breadboards secured with zip ties
 GUI prototype in Figma → displays queued alerts for providers
